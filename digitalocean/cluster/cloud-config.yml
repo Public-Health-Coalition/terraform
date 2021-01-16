@@ -1,0 +1,13 @@
+#cloud-config
+write_files:
+  - path: /etc/ssh/sshd_config
+    content: |
+      Port 2222
+      PermitRootLogin yes
+      PasswordAuthentication no
+      ChallengeResponseAuthentication no
+      UsePAM yes
+      X11Forwarding yes
+      PrintMotd no
+      AcceptEnv LANG LC_*
+      Subsystem	sftp	/usr/lib/openssh/sftp-server

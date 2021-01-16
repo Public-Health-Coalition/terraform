@@ -1,0 +1,40 @@
+#cloud-config
+chpasswd:
+  list: |
+    # root:pass
+
+runcmd:
+  -
+    - sh
+    - -c
+    - |
+        mkdir -p /var/log/boot
+        exec > /var/log/boot/cloud-config.log 2>&1
+
+        # kubernetes
+        curl -sfL https://get.k3s.io | sh -s - server --cluster-init
+        curl -sfL https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+        export KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
+        mkdir -p ~/.kube && kubectl config view --raw > ~/.kube/config
+
+        # cert manager
+        helm repo add jetstack https://charts.jetstack.io
+        helm repo update
+        kubectl create namespace cert-manager
+        kubectl apply --validate=false \
+          -f https://github.com/jetstack/cert-manager/releases/download/v1.0.4/cert-manager.crds.yaml
+        helm install cert-manager jetstack/cert-manager \
+          --namespace cert-manager \
+          --version v1.0.4
+
+        # rancher
+        sleep 60
+        helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
+        helm repo update
+        kubectl create namespace cattle-system
+        helm install rancher rancher-latest/rancher \
+          --version ${rancher_version} \
+          --namespace cattle-system \
+          --set hostname=${name}.${domain} \
+          --set ingress.tls.source=letsEncrypt \
+          --set letsEncrypt.email=${cloudflare_email}
